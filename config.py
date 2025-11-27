@@ -30,6 +30,16 @@ class Config:
         # Server Configuration
         self.max_image_size_mb: int = int(os.getenv("MAX_IMAGE_SIZE_MB", "10"))
         self.log_level: str = os.getenv("LOG_LEVEL", "INFO")
+        self.environment: str = os.getenv("ENVIRONMENT", "development")
+        
+        # CORS Configuration
+        cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+        if cors_origins_env == "*":
+            self.cors_origins = ["*"]
+        else:
+            # Split by comma and strip whitespace
+            self.cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+
         
         # Validate configuration
         self._validate()
@@ -70,9 +80,12 @@ class Config:
             raise ConfigurationError(error_message)
         
         logger.info("Configuration validated successfully")
+        logger.info(f"Environment: {self.environment}")
         logger.info(f"Gemini API URL: {self.gemini_api_url}")
         logger.info(f"Gemini Timeout: {self.gemini_timeout}s")
         logger.info(f"Max Image Size: {self.max_image_size_mb}MB")
+        logger.info(f"CORS Origins: {', '.join(self.cors_origins) if self.cors_origins != ['*'] else 'All origins (*)'}")
+
     
     @property
     def max_image_size_bytes(self) -> int:

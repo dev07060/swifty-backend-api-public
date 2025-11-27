@@ -1,0 +1,85 @@
+steps:
+  # Step 1: Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/swifty-api:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/swifty-api:latest'
+      - '.'
+    id: 'build-image'
+
+  # Step 2: Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/swifty-api:$COMMIT_SHA'
+    id: 'push-image-sha'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/swifty-api:latest'
+    id: 'push-image-latest'
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'swifty-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/swifty-api:$COMMIT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - '${_CLOUDSQL_INSTANCE}'
+      - '--set-env-vars'
+      - 'ENVIRONMENT=production,DB_HOST=${_DB_HOST},DB_PORT=${_DB_PORT},DB_NAME=${_DB_NAME},DB_USER=${_DB_USER},GEMINI_API_URL=${_GEMINI_API_URL},GEMINI_TIMEOUT=${_GEMINI_TIMEOUT},MAX_IMAGE_SIZE_MB=${_MAX_IMAGE_SIZE_MB},LOG_LEVEL=${_LOG_LEVEL},CORS_ORIGINS=${_CORS_ORIGINS}'
+      - '--set-secrets'
+      - 'DB_PASSWORD=swifty-db-password:latest,GEMINI_API_KEY=swifty-gemini-api-key:latest'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+      - '--max-instances'
+      - '10'
+      - '--min-instances'
+      - '0'
+      - '--concurrency'
+      - '80'
+    id: 'deploy-cloud-run'
+
+# Images to store in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/swifty-api:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/swifty-api:latest'
+
+# Substitution variables (can be overridden at build time)
+substitutions:
+  _REGION: 'us-central1'  # Change to your preferred region
+  _CLOUDSQL_INSTANCE: 'YOUR_PROJECT_ID:YOUR_REGION:swifty-postgres'  # Update this
+  _DB_HOST: '/cloudsql/YOUR_PROJECT_ID:YOUR_REGION:swifty-postgres'  # Update this
+  _DB_PORT: '5432'
+  _DB_NAME: 'swifty'
+  _DB_USER: 'swifty_user'
+  _GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent'
+  _GEMINI_TIMEOUT: '30'
+  _MAX_IMAGE_SIZE_MB: '10'
+  _LOG_LEVEL: 'INFO'
+  _CORS_ORIGINS: 'https://app-swifty-healthy.apps.tossmini.com,https://app-swifty-healthy.private-apps.tossmini.com'
+
+# Timeout for the entire build (in seconds)
+timeout: '1200s'
+
+# Options
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

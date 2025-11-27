@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 16 Database
+  db:
+    image: postgres:16-alpine
+    container_name: swifty-postgres
+    environment:
+      POSTGRES_DB: swifty
+      POSTGRES_USER: swifty_user
+      POSTGRES_PASSWORD: swifty_password_local
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swifty_user -d swifty"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - swifty-network
+
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: swifty-api
+    environment:
+      # Database connection
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: swifty
+      DB_USER: swifty_user
+      DB_PASSWORD: swifty_password_local
+      
+      # Gemini API (use your actual API key)
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent
+      GEMINI_TIMEOUT: 30
+      
+      # Server configuration
+      MAX_IMAGE_SIZE_MB: 10
+      LOG_LEVEL: INFO
+      PORT: 8080
+      
+      # Environment
+      ENVIRONMENT: development
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    networks:
+      - swifty-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/docs').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  swifty-network:
+    driver: bridge

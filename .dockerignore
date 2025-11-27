@@ -1,0 +1,55 @@
+# Git and Python
+.git
+.gitignore
+.github
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.venv
+venv
+env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache
+.hypothesis
+.coverage
+htmlcov
+.tox
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Local development
+.env
+.env.local
+docker-compose.yml
+docker-compose.*.yml
+
+# ERD and images (not needed in container)
+erd.png
+*.png
+*.jpg
+*.jpeg
+
+# Test files
+test/
+tests/
+*_test.py
+test_*.py

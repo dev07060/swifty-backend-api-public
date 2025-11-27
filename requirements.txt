@@ -1,8 +1,24 @@
-fastapi
-uvicorn
-asyncpg
-python-dotenv
-pycryptodome
-httpx
-hypothesis
-pytest
+# Core Framework
+fastapi>=0.104.0,<0.105.0
+uvicorn[standard]>=0.24.0,<0.25.0
+
+# Database
+asyncpg>=0.29.0,<0.30.0
+cloud-sql-python-connector[asyncpg]>=1.5.0,<2.0.0
+
+# Configuration & Environment
+python-dotenv>=1.0.0,<2.0.0
+
+# Security & Encryption
+pycryptodome>=3.19.0,<4.0.0
+
+# HTTP Client (for Gemini API)
+httpx>=0.25.0,<0.26.0
+
+# Production Server
+gunicorn>=21.2.0,<22.0.0
+
+# Testing (development only, can be in separate requirements-dev.txt)
+hypothesis>=6.92.0,<7.0.0
+pytest>=7.4.0,<8.0.0
+pytest-asyncio>=0.21.0,<0.22.0

@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+asyncpg
+python-dotenv
+pycryptodome
+httpx
+hypothesis
+pytest

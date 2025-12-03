@@ -133,7 +133,7 @@ chmod +x cloud-sql-proxy
 # In another terminal, run the schema
 export DB_HOST=localhost
 export DB_PORT=5432
-export DB_NAME=swifty
+export DB_NAME=swifty-prd
 export DB_USER=swifty_user
 export DB_PASSWORD="YOUR_SECURE_APP_PASSWORD"
 

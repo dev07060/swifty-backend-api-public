@@ -28,7 +28,7 @@ GEMINI_API_KEY=your-actual-gemini-api-key-here
 # These are set automatically by docker-compose:
 # DB_HOST=db
 # DB_PORT=5432
-# DB_NAME=swifty
+# DB_NAME=swifty-prd
 # DB_USER=swifty_user
 # DB_PASSWORD=swifty_password_local
 ```

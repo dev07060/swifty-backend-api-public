@@ -64,12 +64,13 @@ images:
 
 # Substitution variables (can be overridden at build time)
 substitutions:
-  _REGION: 'us-central1'  # Change to your preferred region
-  _CLOUDSQL_INSTANCE: 'YOUR_PROJECT_ID:YOUR_REGION:swifty-postgres'  # Update this
-  _DB_HOST: '/cloudsql/YOUR_PROJECT_ID:YOUR_REGION:swifty-postgres'  # Update this
+  _REGION: 'asia-northeast3'  # Change to your preferred region
+  _CLOUDSQL_INSTANCE: 'app-swifty-healthy:asia-northeast3:psql-swifty-free'  # Update this
+  _DB_HOST: '/cloudsql/app-swifty-healthy:asia-northeast3:psql-swifty-free'  # Update this
   _DB_PORT: '5432'
-  _DB_NAME: 'swifty'
-  _DB_USER: 'swifty_user'
+  _DB_NAME: 'swifty-prd'
+  _DB_USER: 'brian.oh'
+  _DB_PASSWORD: 'qudgml00'
   _GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent'
   _GEMINI_TIMEOUT: '30'
   _MAX_IMAGE_SIZE_MB: '10'

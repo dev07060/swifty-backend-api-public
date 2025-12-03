@@ -24,11 +24,16 @@ from models import (
     FoodAnalysisResponse,
     ErrorResponse,
 )
+from toss_auth_models import (
+    TossAuthInitRequest,
+    TossAuthResponse,
+)
 from config import init_config, ConfigurationError
 from image_processor import ImageProcessor, ImageProcessingError
 from gemini_service import GeminiService, GeminiAPIError
 from response_parser import ResponseParser, ResponseParsingError
 from prompt_manager import PromptManager
+from toss_auth_service import TossAuthService, TossAuthError
 
 # Initialize and validate configuration on startup
 try:
@@ -47,6 +52,20 @@ try:
         timeout=app_config.gemini_timeout
     )
     logging.info("Gemini service initialized successfully")
+    
+    # Initialize Toss Auth service (optional - only if credentials are configured)
+    toss_auth_service = None
+    if app_config.toss_cert_client_id and app_config.toss_cert_client_secret:
+        toss_auth_service = TossAuthService(
+            client_id=app_config.toss_cert_client_id,
+            client_secret=app_config.toss_cert_client_secret,
+            oauth_base_url=app_config.toss_cert_oauth_url,
+            cert_base_url=app_config.toss_cert_base_url,
+            timeout=app_config.toss_cert_timeout
+        )
+        logging.info("Toss Auth service initialized successfully")
+    else:
+        logging.warning("Toss Auth service not initialized - credentials not configured")
 except ConfigurationError as e:
     logging.critical(f"Failed to initialize configuration: {e}")
     raise
@@ -285,4 +304,172 @@ async def analyze_food(request: ImageAnalysisRequest):
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred during analysis."
+        )
+
+
+# --- Toss Authentication Endpoints ---
+
+@app.post("/api/toss-auth/request", response_model=dict)
+async def request_toss_auth():
+    """
+    Request Toss authentication and return txId for client to initiate auth flow.
+    
+    Returns:
+        dict with txId and other auth initiation data
+        
+    Raises:
+        HTTPException: 503 if Toss service not configured, 502 for Toss API errors
+    """
+    if toss_auth_service is None:
+        logging.error("Toss auth requested but service not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Toss authentication service is not configured. Please contact administrator."
+        )
+    
+    try:
+        logging.info("Requesting Toss authentication")
+        
+        # Request authentication from Toss
+        auth_response = await toss_auth_service.request_authentication()
+        
+        if auth_response.resultType == "FAIL":
+            raise HTTPException(
+                status_code=502,
+                detail=f"Toss auth request failed: {auth_response.error.reason}"
+            )
+        
+        # Return txId to client so they can call tosscertRequest SDK function
+        return {
+            "txId": auth_response.success.txId,
+            "requestedAt": auth_response.success.requestedDt,
+        }
+        
+    except TossAuthError as e:
+        logging.error(f"Toss auth request error: {e}")
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Failed to request authentication: {e.message}"
+        )
+    except Exception as e:
+        logging.error(f"Unexpected error in toss auth request: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during authentication request."
+        )
+
+
+@app.get("/api/toss-auth/status/{tx_id}", response_model=dict)
+async def check_toss_auth_status(tx_id: str):
+    """
+    Check the status of a Toss authentication request.
+    
+    Args:
+        tx_id: Transaction ID from auth request
+        
+    Returns:
+        dict with status information
+        
+    Raises:
+        HTTPException: 503 if service not configured, 502 for Toss API errors
+    """
+    if toss_auth_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Toss authentication service is not configured."
+        )
+    
+    try:
+        logging.info(f"Checking auth status for txId: {tx_id}")
+        
+        status_response = await toss_auth_service.check_auth_status(tx_id)
+        
+        if status_response.resultType == "FAIL":
+            raise HTTPException(
+                status_code=502,
+                detail=f"Status check failed: {status_response.error.reason}"
+            )
+        
+        return {
+            "txId": status_response.success.txId,
+            "status": status_response.success.status,
+            "requestedAt": status_response.success.requestedDt,
+        }
+        
+    except TossAuthError as e:
+        logging.error(f"Status check error: {e}")
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Failed to check status: {e.message}"
+        )
+    except Exception as e:
+        logging.error(f"Unexpected error in status check: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during status check."
+        )
+
+
+@app.post("/api/toss-auth/result/{tx_id}", response_model=TossAuthResponse)
+async def get_toss_auth_result(tx_id: str):
+    """
+    Get the authentication result and decrypted user data.
+    This should be called after the user completes authentication in Toss app.
+    
+    Args:
+        tx_id: Transaction ID from auth request
+        
+    Returns:
+        TossAuthResponse with decrypted user information
+        
+    Raises:
+        HTTPException: 503 if service not configured, 502 for Toss API errors,
+                      400 if auth not completed
+    """
+    if toss_auth_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Toss authentication service is not configured."
+        )
+    
+    try:
+        logging.info(f"Getting auth result for txId: {tx_id}")
+        try:
+        # Get result and decrypted data in one go
+        # This handles session key generation, API call, and decryption
+            result_data = await toss_auth_service.get_auth_result_with_decryption(tx_id)
+            result_response = result_data["result_response"]
+            user_data = result_data["decrypted_data"]
+        except TossAuthError as e:
+            # Re-raise specific TossAuthError for "not completed" status as 400
+            if e.status_code == 400:
+                raise HTTPException(
+                    status_code=400,
+                    detail=e.message
+                )
+            raise # Re-raise other TossAuthErrors to be caught by the outer block
+        
+        logging.info(f"Successfully retrieved and decrypted user data for: {user_data.name}")
+        
+        # Return structured response
+        return TossAuthResponse(
+            txId=result_response.success.txId,
+            userData=user_data,
+            signature=result_response.success.signature,
+            completedAt=result_response.success.completedDt,
+        )
+        
+    except TossAuthError as e:
+        logging.error(f"Result retrieval error: {e}")
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Failed to get result: {e.message}"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error in result retrieval: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during result retrieval."
         )

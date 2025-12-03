@@ -7,7 +7,7 @@ set -e
 # Configuration from environment variables
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
-DB_NAME="${DB_NAME:-swifty}"
+DB_NAME="${DB_NAME:-swifty-prd}"
 DB_USER="${DB_USER:-postgres}"
 
 echo "================================================"

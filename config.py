@@ -27,6 +27,13 @@ class Config:
         )
         self.gemini_timeout: int = int(os.getenv("GEMINI_TIMEOUT", "30"))
         
+        # Toss Cert Authentication Configuration
+        self.toss_cert_client_id: str = os.getenv("TOSS_CERT_CLIENT_ID", "")
+        self.toss_cert_client_secret: str = os.getenv("TOSS_CERT_CLIENT_SECRET", "")
+        self.toss_cert_oauth_url: str = os.getenv("TOSS_CERT_OAUTH_URL", "https://oauth2.cert.toss.im")
+        self.toss_cert_base_url: str = os.getenv("TOSS_CERT_BASE_URL", "https://cert.toss.im")
+        self.toss_cert_timeout: int = int(os.getenv("TOSS_CERT_TIMEOUT", "30"))
+        
         # Server Configuration
         self.max_image_size_mb: int = int(os.getenv("MAX_IMAGE_SIZE_MB", "10"))
         self.log_level: str = os.getenv("LOG_LEVEL", "INFO")
@@ -73,6 +80,10 @@ class Config:
         if self.max_image_size_mb <= 0:
             errors.append("MAX_IMAGE_SIZE_MB must be a positive integer")
         
+        # Validate Toss Cert credentials (optional - only warn if missing)
+        if not self.toss_cert_client_id or not self.toss_cert_client_secret:
+            logger.warning("Toss Cert credentials not configured - authentication endpoints will not work")
+        
         # Raise error if any validation failed
         if errors:
             error_message = "Configuration validation failed:\n" + "\n".join(f"  - {error}" for error in errors)
@@ -85,6 +96,8 @@ class Config:
         logger.info(f"Gemini Timeout: {self.gemini_timeout}s")
         logger.info(f"Max Image Size: {self.max_image_size_mb}MB")
         logger.info(f"CORS Origins: {', '.join(self.cors_origins) if self.cors_origins != ['*'] else 'All origins (*)'}")
+        if self.toss_cert_client_id:
+            logger.info(f"Toss Cert configured: Client ID = {self.toss_cert_client_id[:10]}...")
 
     
     @property

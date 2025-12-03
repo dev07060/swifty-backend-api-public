@@ -12,8 +12,14 @@ python-dotenv>=1.0.0,<2.0.0
 # Security & Encryption
 pycryptodome>=3.19.0,<4.0.0
 
-# HTTP Client (for Gemini API)
-httpx>=0.25.0,<0.26.0
+# HTTP Client (for Gemini API and Toss Auth)
+httpx>=0.25.0,<0.28.0
+
+# Prompt and AI
+google-generativeai>=0.8.3
+
+# Toss Auth dependencies  
+cryptography>=42.0.0
 
 # Production Server
 gunicorn>=21.2.0,<22.0.0
